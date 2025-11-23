@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TARGETstore 🛒 - Cart</title>
+  <style>
+    body{font-family:Poppins,Arial,Helvetica,sans-serif;margin:0;background:#fff;color:#111}
+    header{background:#111;color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}
+    .container{padding:16px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;text-align:left}
+    .muted{color:#666}
+    .qty{display:flex;gap:6px;align-items:center}
+    .btn{background:#ff5722;color:#fff;border:none;padding:8px 10px;border-radius:8px;cursor:pointer}
+    .btn.ghost{background:#eee;color:#000}
+    .row{display:flex;gap:8px;align-items:center}
+    .empty{padding:24px;text-align:center;color:#666}
+    .checkout{display:flex;justify-content:flex-end;margin-top:12px}
+    @media(max-width:520px){table{font-size:14px}}
+  </style>
+</head>
+<body>
+  <header><h1>TARGETstore - Cart</h1><a href="index.html" class="btn btn-link" style="background:#fff;color:#ff5722;border:1px solid #ff5722;padding:6px 10px;border-radius:8px;text-decoration:none">Continue shopping</a></header>
+
+  <main class="container">
+    <div id="cart-area"></div>
+    <div class="checkout">
+      <button class="btn" id="checkout-btn">Proceed to Checkout</button>
+    </div>
+  </main>
+
+  <script>
+    function loadCart(){ return JSON.parse(localStorage.getItem('ts_cart')||'{}'); }
+    function saveCart(cart){ localStorage.setItem('ts_cart', JSON.stringify(cart)); renderCart(); }
+
+    function renderCart(){
+      const cart = loadCart();
+      const keys = Object.keys(cart);
+      const area = document.getElementById('cart-area');
+      if(!keys.length){ area.innerHTML = '<div class="empty">Your cart is empty. Add products from the store.</div>'; document.getElementById('checkout-btn').disabled=true; return; }
+      let html = '<table><thead><tr><th>Item</th><th>Price</th><th>Qty</th><th>Subtotal</th><th></th></tr></thead><tbody>';
+      let total = 0;
+      keys.forEach(id=>{
+        const it = cart[id];
+        const subtotal = it.price * it.qty;
+        total += subtotal;
+        html += `<tr>
+          <td><strong>${it.title}</strong><div class="muted">${it.id}</div></td>
+          <td>₹${it.price}</td>
+          <td>
+            <div class="qty">
+              <button onclick="decrease('${id}')">-</button>
+              <span id="q-${id}">${it.qty}</span>
+              <button onclick="increase('${id}')">+</button>
+            </div>
+          </td>
+          <td>₹${subtotal}</td>
+          <td><button onclick="removeItem('${id}')" class="btn btn-ghost" style="background:#eee;color:#111;border-radius:8px">Remove</button></td>
+        </tr>`;
+      });
+      html += `</tbody></table>`;
+      html += `<div style="text-align:right;margin-top:10px"><strong>Total: ₹${total}</strong></div>`;
+      area.innerHTML = html;
+      document.getElementById('checkout-btn').disabled=false;
+      // store total to read on checkout easily
+      localStorage.setItem('ts_cart_total', total);
+    }
+
+    function increase(id){
+      const cart = loadCart(); cart[id].qty++; saveCart(cart);
+    }
+    function decrease(id){
+      const cart = loadCart(); if(cart[id].qty>1){ cart[id].qty--; } else { delete cart[id]; }
+      saveCart(cart);
+    }
+    function removeItem(id){
+      const cart = loadCart(); delete cart[id]; saveCart(cart);
+    }
+
+    document.getElementById('checkout-btn').addEventListener('click', ()=>{
+      // go to checkout
+      location.href = 'checkout.html';
+    });
+
+    // if URL had buy=productId (direct Buy Now)
+    (function handleDirectBuy(){
+      const params = new URLSearchParams(location.search);
+      const buy = params.get('buy');
+      if(buy){
+        const cart = loadCart();
+        // replace cart with only this product (acts like Buy Now)
+        // or comment this block if you want to preserve cart and just add
+        for(const k in cart) delete cart[k];
+        const products = JSON.parse(localStorage.getItem('ts_products_example') || 'null');
+      }
+    })();
+
+    // Initialize demo: save product list in localStorage for checkout page to read (non-required but helpful)
+    // This matches the products from index.html (if you change product list, keep them consistent)
+    const PRODUCTS = [
+      { id: 'p1', title: 'BMW M5 | A4 size FRAME', price: 279 },
+      { id: 'p2', title: 'JEEP | A4 size FRAME', price: 299 },
+      { id: 'p3', title: 'BMW M5 | A3 size FRAME', price: 379 },
+      { id: 'p4', title: 'JEEP | A3 size FRAME', price: 399 },
+      { id: 'p5', title: 'BMW M5 | A5 size FRAME', price: 229 },
+      { id: 'p6', title: 'JEEP | A5 size FRAME', price: 249 }
+    ];
+    localStorage.setItem('ts_products_example', JSON.stringify(PRODUCTS));
+
+    renderCart();
+  </script>
+</body>
+</html>
