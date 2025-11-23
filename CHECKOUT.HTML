@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TARGETstore - Checkout</title>
+  <style>
+    body{font-family:Poppins,Arial,Helvetica,sans-serif;margin:0;background:#fff;color:#111}
+    header{background:#111;color:#fff;padding:12px 16px}
+    .container{padding:16px;max-width:900px;margin:0 auto}
+    .grid{display:grid;grid-template-columns:1fr 360px;gap:16px}
+    .card{background:#fafafa;padding:12px;border-radius:10px;box-shadow:0 4px 8px rgba(0,0,0,0.04)}
+    label{display:block;margin-top:10px;font-weight:600}
+    input,textarea,select{width:100%;padding:8px;margin-top:6px;border-radius:8px;border:1px solid #ddd}
+    .small{font-size:0.9rem;color:#666}
+    .btn{background:#ff5722;color:#fff;border:none;padding:10px 12px;border-radius:8px;cursor:pointer;margin-top:12px}
+    .muted{color:#666;font-size:0.95rem}
+    .cart-lines{max-height:300px;overflow:auto}
+    .line{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #eee}
+    .payment-methods{display:flex;gap:8px;margin-top:8px}
+    .pm{border:1px solid #ddd;padding:8px;border-radius:8px;cursor:pointer}
+    .pm.selected{border-color:#ff5722;box-shadow:0 6px 18px rgba(255,87,34,0.08)}
+    .qr{width:200px;height:200px;background:#fff;display:flex;align-items:center;justify-content:center;border:1px solid #eee;margin-top:8px}
+    @media(max-width:880px){ .grid{grid-template-columns:1fr} .qr{width:160px;height:160px} }
+  </style>
+</head>
+<body>
+  <header><h1 style="margin:0">TARGETstore - Checkout</h1></header>
+
+  <main class="container">
+    <div class="grid">
+      <section>
+        <div class="card">
+          <h2>Customer Details</h2>
+          <label>Full name<input id="name" placeholder="Your name" /></label>
+          <label>Mobile number<input id="mobile" placeholder="+91 9xxxxxxxxx" /></label>
+          <label>Address<textarea id="address" rows="3" placeholder="House, Street, City"></textarea></label>
+          <label>PIN code<input id="pin" /></label>
+
+          <h3 style="margin-top:12px">Payment method</h3>
+          <div class="payment-methods" id="payment-methods">
+            <div class="pm selected" data-method="COD">Cash on Delivery (COD)</div>
+            <div class="pm" data-method="UPI">UPI (Pay now)</div>
+          </div>
+
+          <div id="upi-area" style="display:none;margin-top:8px">
+            <div class="muted">UPI ID (merchant): <strong id="upi-id-display"></strong></div>
+            <div class="small">Click "Pay with UPI" to open your UPI app. After payment click "I have paid".</div>
+            <div style="margin-top:8px">
+              <button class="btn" id="pay-upi-btn">Pay with UPI</button>
+            </div>
+            <div id="confirm-upi" style="display:none;margin-top:8px">
+              <button class="btn" id="i-paid-btn" style="background:#4CAF50">I have paid</button>
+            </div>
+            <div id="qr-wrap" style="margin-top:8px"></div>
+          </div>
+
+          <div style="margin-top:12px">
+            <button class="btn" id="place-order">Place order</button>
+          </div>
+
+          <div id="status" class="small muted" style="margin-top:10px"></div>
+        </div>
+      </section>
+
+      <aside>
+        <div class="card">
+          <h3>Order summary</h3>
+          <div id="cart-lines" class="cart-lines"></div>
+          <div style="margin-top:10px">
+            <div style="display:flex;justify-content:space-between"><span>Subtotal</span><strong id="subtotal">₹0</strong></div>
+            <div style="display:flex;justify-content:space-between"><span>Delivery</span><span id="delivery">₹0</span></div>
+            <div style="display:flex;justify-content:space-between"><span>Total</span><strong id="total">₹0</strong></div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;text-align:center" class="small muted">
+          You will receive an order message on WhatsApp after placing the order.
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    /***********************************************
+     * Configuration (EDIT THESE)
+     ***********************************************/
+    const STORE_NAME = "TARGETstore";
+    const OWNER_WHATSAPP = "919048658170"; // <<--- Replace with your number (with country code)
+    const MERCHANT_UPI = "yourupi@bank";    // <<--- Replace with your UPI ID (example: target@axis)
+    const DELIVERY_CHARGE = 0; // set delivery fee as needed
+
+    /***********************************************
+     * Cart & UI logic
+     ***********************************************/
+    function loadCart(){ return JSON.parse(localStorage.getItem('ts_cart')||'{}'); }
+    function saveCart(cart){ localStorage.setItem('ts_cart', JSON.stringify(cart)); }
+
+    // populate summary
+    function renderSummary(){
+      const cart = loadCart();
+      const keys = Object.keys(cart);
+      const lines = document.getElementById('cart-lines');
+      lines.innerHTML = '';
+      if(!keys.length){ lines.innerHTML = '<div class="small">Your cart is empty.</div>'; }
+      let subtotal = 0;
+      keys.forEach(id=>{
+        const it = cart[id];
+        const sub = it.price * it.qty;
+        subtotal += sub;
+        const div = document.createElement('div'); div.className='line';
+        div.innerHTML = `<div><strong>${it.title}</strong><div class="small">${it.qty} × ₹${it.price}</div></div><div>₹${sub}</div>`;
+        lines.appendChild(div);
+      });
+      document.getElementById('subtotal').textContent = `₹${subtotal}`;
+      document.getElementById('delivery').textContent = `₹${DELIVERY_CHARGE}`;
+      document.getElementById('total').textContent = `₹${subtotal + DELIVERY_CHARGE}`;
+    }
+
+    renderSummary();
+
+    // payment method selection UI
+    const pmEls = document.querySelectorAll('.pm');
+    let selectedPayment = 'COD';
+    pmEls.forEach(el=>{
+      el.addEventListener('click', ()=>{
+        pmEls.forEach(x=>x.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedPayment = el.dataset.method;
+        document.getElementById('upi-area').style.display = selectedPayment==='UPI' ? 'block' : 'none';
+        document.getElementById('upi-id-display').textContent = MERCHANT_UPI;
+      });
+    });
+
+    // UPI pay button -> opens UPI intent / deep link
+    document.getElementById('pay-upi-btn').addEventListener('click', ()=>{
+      const totalText = document.getElementById('total').textContent.replace('₹','').trim();
+      const amount = encodeURIComponent(totalText);
+      // UPI deep link which opens UPI apps on mobile
+      const upiUrl = `upi://pay?pa=${encodeURIComponent(MERCHANT_UPI)}&pn=${encodeURIComponent(STORE_NAME)}&am=${amount}&cu=INR&tn=${encodeURIComponent('Order from '+STORE_NAME)}`;
+      // Also provide a web fallback link (for desktop) using UPI deep link wrapped in a simple redirect:
+      window.location.href = upiUrl;
+      // Show confirm UI
+      document.getElementById('confirm-upi').style.display = 'block';
+      document.getElementById('status').textContent = 'UPI intent opened. After completing payment, click "I have paid".';
+      // Create a UPI QR via Google Charts (convenience; replace if you want another QR generator)
+      const qrWrap = document.getElementById('qr-wrap');
+      const upiText = `upi://pay?pa=${MERCHANT_UPI}&pn=${STORE_NAME}&am=${amount}&cu=INR&tn=Order`;
+      const qrUrl = `https://chart.googleapis.com/chart?cht=qr&chs=200x200&chl=${encodeURIComponent(upiText)}`;
+      qrWrap.innerHTML = `<div class="muted">Scan to pay</div><div class="qr"><img src="${qrUrl}" alt="UPI QR" style="max-width:100%"/></div>`;
+    });
+
+    // "I have paid" (user confirms) - client-side only
+    document.getElementById('i-paid-btn').addEventListener('click', ()=>{
+      document.getElementById('status').textContent = 'Thank you. Payment marked as completed. Now place the order to send WhatsApp: click "Place order & Send WhatsApp".';
+      // store a flag to indicate payment completed client-side
+      sessionStorage.setItem('ts_upi_paid','true');
+    });
+
+    // Compose and send WhatsApp order
+    document.getElementById('place-order').addEventListener('click', ()=>{
+      const name = document.getElementById('name').value.trim();
+      const mobile = document.getElementById('mobile').value.trim();
+      const address = document.getElementById('address').value.trim();
+      const pin = document.getElementById('pin').value.trim();
+
+      if(!name || !mobile || !address || !pin){
+        alert('Please fill name, mobile, address and PIN code.');
+        return;
+      }
+
+      const cart = loadCart();
+      const items = Object.values(cart);
+      if(!items.length){ alert('Your cart is empty. Add some products.'); return; }
+
+      const subtotalText = document.getElementById('subtotal').textContent.replace('₹','').trim();
+      const totalText = document.getElementById('total').textContent.replace('₹','').trim();
+
+      // If payment method is UPI and user hasn't confirmed payment, ask to confirm (since we cannot verify server-side)
+      if(selectedPayment === 'UPI' && sessionStorage.getItem('ts_upi_paid') !== 'true'){
+        const ok = confirm('You selected UPI. Have you completed the UPI payment? If yes, click OK and then Place order will send WhatsApp. If not, click Cancel and pay first.');
+        if(!ok) return;
+      }
+
+      // Build the bill message
+      let message = `🧾 *NEW ORDER - ${STORE_NAME}*%0A%0A`;
+      message += `*Customer:* ${encodeURIComponent(name)}%0A`;
+      message += `*Mobile:* ${encodeURIComponent(mobile)}%0A`;
+      message += `*Address:* ${encodeURIComponent(address)} - ${encodeURIComponent(pin)}%0A%0A`;
+
+      message += `*Order details:*%0A`;
+      items.forEach(it=>{
+        message += encodeURIComponent(`• ${it.title} — ${it.qty} × ₹${it.price} = ₹${it.price * it.qty}`) + `%0A`;
+      });
+
+      message += `%0A*Subtotal:* ₹${subtotalText}%0A`;
+      message += `*Delivery:* ₹${DELIVERY_CHARGE}%0A`;
+      message += `*Total:* ₹${totalText}%0A%0A`;
+
+      message += `*Payment method:* ${selectedPayment}%0A`;
+      if(selectedPayment==='UPI'){ message += `*UPI ID paid to:* ${MERCHANT_UPI}%0A`; }
+      message += `%0APlease confirm the order and share ETA.%0A`;
+
+      const waUrl = `https://wa.me/${OWNER_WHATSAPP}?text=${message}`;
+
+      // Optionally: save order locally (basic record)
+      const orders = JSON.parse(localStorage.getItem('ts_orders')||'[]');
+      orders.push({
+        id: 'ORD' + Date.now(),
+        name, mobile, address, pin, items, total: totalText, payment:selectedPayment, created: new Date().toISOString()
+      });
+      localStorage.setItem('ts_orders', JSON.stringify(orders));
+
+      // Clear cart after placing (optional). We will clear because WhatsApp opens for sending
+      localStorage.removeItem('ts_cart');
+      sessionStorage.removeItem('ts_upi_paid');
+      // open WhatsApp
+      window.open(waUrl, '_blank');
+      alert('WhatsApp window opened to send order. If it did not open, make sure your browser allows popups. Cart has been cleared locally.');
+      // redirect to thank-you or home
+      setTimeout(()=>{ location.href = 'index.html'; }, 800);
+    });
+
+    // Pre-fill mobile country code helper
+    (function prefillFromLast(){
+      const last = JSON.parse(localStorage.getItem('ts_last_customer') || 'null');
+      if(last){ document.getElementById('name').value = last.name || ''; document.getElementById('mobile').value = last.mobile || ''; document.getElementById('address').value = last.address || ''; document.getElementById('pin').value = last.pin || ''; }
+    })();
+
+    // Save last customer on unload
+    window.addEventListener('beforeunload', ()=>{
+      const name = document.getElementById('name').value.trim();
+      const mobile = document.getElementById('mobile').value.trim();
+      const address = document.getElementById('address').value.trim();
+      const pin = document.getElementById('pin').value.trim();
+      localStorage.setItem('ts_last_customer', JSON.stringify({name,mobile,address,pin}));
+    });
+
+    // If user arrived via `?buy=productId` we can populate cart with single product and navigate here
+    (function handleDirectBuy(){
+      const params = new URLSearchParams(location.search);
+      const buy = params.get('buy');
+      if(buy){
+        const products = JSON.parse(localStorage.getItem('ts_products_example') || '[]');
+        const prod = products.find(p=>p.id===buy);
+        if(prod){
+          const cart = {};
+          cart[prod.id] = {...prod, qty:1};
+          localStorage.setItem('ts_cart', JSON.stringify(cart));
+          renderSummary();
+        }
+      }
+    })();
+
+  </script>
+</body>
+</html>

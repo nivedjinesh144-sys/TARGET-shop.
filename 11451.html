@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TARGETstore 🛒 - Shop</title>
+
+  <style>
+    :root{
+      --accent:#ff5722;
+      --bg:#fff;
+      --muted:#666;
+    }
+
+    body{
+      font-family:Inter,system-ui,Segoe UI,Roboto,'Poppins',sans-serif;
+      margin:0;
+      background:var(--bg);
+      color:#111;
+    }
+
+    /* -------- HEADER -------- */
+    header{
+      background:#111;
+      color:#fff;
+      padding:12px 18px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+    }
+    header h1{
+      margin:0;
+      font-size:1.3rem;
+    }
+
+    /* -------- CONTAINER -------- */
+    .container{
+      padding:18px;
+      max-width:1200px;
+      margin:auto;
+    }
+
+    /* -------- HERO -------- */
+    .hero h2{
+      font-size:1.8rem;
+      color:var(--accent);
+      margin:0 0 4px 0;
+    }
+    .hero p{
+      margin:0;
+      color:#000;
+      font-size:1rem;
+    }
+
+    /* -------- PRODUCT GRID (RESPONSIVE) -------- */
+    .products{
+      display:grid;
+      gap:16px;
+      grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+    }
+
+    /* Desktop wider items */
+    @media (min-width:450px){
+      .products{
+        grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
+      }
+    }
+
+    /* -------- PRODUCT CARD -------- */
+    .card{
+      border-radius:12px;
+      padding:12px;
+      background:#fafafa;
+      box-shadow:0 4px 10px rgba(0,0,0,0.06);
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .card img{
+      width:100%;
+      height:auto-fit;
+      object-fit:cover;
+      border-radius:8px;
+    }
+
+    @media (max-width:520px){
+      .card img{
+        height:auto-fit;
+      }
+    }
+
+    .card h3{
+      margin:0;
+      font-size:1rem;
+    }
+    .card p{
+      margin:0;
+      color:var(--muted);
+      font-size:0.95rem;
+    }
+
+    .row{
+      display:flex;
+      gap:8px;
+      align-items:center;
+    }
+
+    /* -------- BUTTONS -------- */
+    .btn{
+      background:var(--accent);
+      color:#fff;
+      border:none;
+      padding:8px 10px;
+      border-radius:8px;
+      cursor:pointer;
+      flex:1;
+      text-align:center;
+      font-size:0.9rem;
+    }
+    .btn.secondary{
+      background:#eee;
+      color:#111;
+    }
+
+    /* -------- CART LINK -------- */
+    .cart-link{
+      background:#fff;
+      color:var(--accent);
+      border:1px solid var(--accent);
+      padding:6px 10px;
+      border-radius:8px;
+      text-decoration:none;
+      font-size:0.9rem;
+    }
+
+    /* -------- FOOTER -------- */
+    footer{
+      padding:18px;
+      text-align:center;
+      color:#777;
+      font-size:0.9rem;
+      margin-top:32px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>TARGETstore 🛒</h1>
+    <a class="cart-link" href="cart.html">View Cart (<span id="cart-count">0</span>)</a>
+  </header>
+
+  <main class="container">
+    <section class="hero" style="margin-bottom:18px">
+      <h2>TARGETstore</h2>
+      <p>Choose a product and add to cart. Proceed to checkout when ready.</p>
+    </section>
+
+    <section class="products" id="products"></section>
+
+    <footer>
+      © 2025 TARGET | All Rights Reserved
+    </footer>
+  </main>
+
+  <script>
+    /* PRODUCT LIST */
+    const PRODUCTS = [
+      { id: 'p1', title: 'BMW M5 | A4 size FRAME', price: 279, img: 'https://m.media-amazon.com/images/I/71WvN6vaXkL._AC_UF894,1000_QL80_.jpg' },
+      { id: 'p2', title: 'JEEP | A4 size FRAME', price: 299, img: 'https://i.ibb.co/fVzSDDCW/IMG-20251104-WA0008.webp' },
+      { id: 'p3', title: 'BMW M5 | A3 size FRAME', price: 379, img: 'https://m.media-amazon.com/images/I/71WvN6vaXkL._AC_UF894,1000_QL80_.jpg' },
+      { id: 'p4', title: 'JEEP | A3 size FRAME', price: 399, img: 'https://i.ibb.co/fVzSDDCW/IMG-20251104-WA0008.webp' },
+      { id: 'p5', title: 'BMW M5 | A5 size FRAME', price: 229, img: 'https://m.media-amazon.com/images/I/71WvN6vaXkL._AC_UF894,1000_QL80_.jpg' },
+      { id: 'p6', title: 'JEEP | A5 size FRAME', price: 249, img: 'https://i.ibb.co/fVzSDDCW/IMG-20251104-WA0008.webp' },
+      
+      /* EXTRA PRODUCTS */
+      { id: 'p7', title: 'JEEP | A4 size FRAME', price: 299, img: 'https://i.ibb.co/fVzSDDCW/IMG-20251104-WA0008.webp' },
+      { id: 'p8', title: 'BMW M5 | A4 size FRAME', price: 279, img: 'https://m.media-amazon.com/images/I/71WvN6vaXkL._AC_UF894,1000_QL80_.jpg' },
+      { id: 'p9', title: 'JEEP | A4 size FRAME', price: 299, img: 'https://i.ibb.co/fVzSDDCW/IMG-20251104-WA0008.webp' },
+      { id: 'p10', title: 'BMW M5 | A4 size FRAME', price: 279, img: 'https://m.media-amazon.com/images/I/71WvN6vaXkL._AC_UF894,1000_QL80_.jpg' },
+      { id: 'p11', title: 'JEEP | A4 size FRAME', price: 299, img: 'https://i.ibb.co/fVzSDDCW/IMG-20251104-WA0008.webp' },
+      { id: 'p12', title: 'BMW M5 | A4 size FRAME', price: 279, img: 'https://m.media-amazon.com/images/I/71WvN6vaXkL._AC_UF894,1000_QL80_.jpg' },
+      { id: 'p13', title: 'JEEP | A4 size FRAME', price: 299, img: 'https://i.ibb.co/fVzSDDCW/IMG-20251104-WA0008.webp' },
+      { id: 'p14', title: 'BMW M5 | A4 size FRAME', price: 279, img: 'https://m.media-amazon.com/images/I/71WvN6vaXkL._AC_UF894,1000_QL80_.jpg' },
+      { id: 'p15', title: 'JEEP | A4 size FRAME', price: 299, img: 'https://i.ibb.co/fVzSDDCW/IMG-20251104-WA0008.webp' }
+    ];
+
+    /* CART FUNCTIONS */
+    function loadCart(){ return JSON.parse(localStorage.getItem('ts_cart') || '{}'); }
+    function saveCart(cart){ localStorage.setItem('ts_cart', JSON.stringify(cart)); updateCartCount(); }
+
+    function updateCartCount(){
+      const cart = loadCart();
+      const count = Object.values(cart).reduce((s,i)=>s + i.qty, 0);
+      document.getElementById('cart-count').textContent = count;
+    }
+
+    function addToCart(id){
+      const cart = loadCart();
+      cart[id] = cart[id] || { ...PRODUCTS.find(p=>p.id===id), qty:0 };
+      cart[id].qty++;
+      saveCart(cart);
+      alert("Added to cart ✔");
+    }
+
+    /* RENDER PRODUCTS */
+    const productsEl = document.getElementById("products");
+
+    PRODUCTS.forEach(p=>{
+      productsEl.innerHTML += `
+        <div class="card">
+          <img src="${p.img}" alt="${p.title}"/>
+          <h3>${p.title}</h3>
+          <p>₹${p.price}</p>
+          <div class="row">
+            <button class="btn" onclick="addToCart('${p.id}')">Add to Cart</button>
+            <a class="btn secondary" href="checkout.html?buy=${p.id}">Buy Now</a>
+          </div>
+        </div>
+      `;
+    });
+
+    updateCartCount();
+  </script>
+
+</body>
+</html>
